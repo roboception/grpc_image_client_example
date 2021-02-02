@@ -1,0 +1,80 @@
+before_script:
+  - export DISTRO_CODENAME=`lsb_release -cs` && echo Using distro $DISTRO_CODENAME
+  - export DEBIAN_FRONTEND=noninteractive
+  - apt-get update -yq && apt-get install -y lintian git libgrpc++-dev protobuf-compiler-grpc
+
+variables:
+  GET_SOURCES_ATTEMPTS: "3"
+  GIT_DEPTH: "0"
+
+#########################
+# Templates using anchors
+#########################
+.amd64_focal_t: &amd64_focal_job
+  image: registry.roboception.de/tools/docker_images:focal-buildimage
+  tags:
+    - amd64
+    - docker
+
+#############
+# Templates
+#############
+.test:
+  stage: test
+  script:
+    - mkdir build && cd build
+    - cmake ..
+    - make -j 4
+    - CTEST_OUTPUT_ON_FAILURE=1 make test
+
+# Debian packaging
+.package:
+  stage: deploy
+  script:
+    - mkdir build && cd build
+    - cmake ..
+    - make -j 4
+    - make package
+    - if [ -z "$APT_REPO" ]; then export APT_REPO=testing; fi
+    - upload_deb.sh $DISTRO_CODENAME-$APT_REPO *.deb
+
+.package_testing:
+  extends: .package
+  only:
+    - master
+  except:
+    - tags
+  variables:
+    TESTING_DEBS: "true"
+    APT_REPO: "testing"
+
+.package_stable:
+  extends: .package
+  only:
+    - /^v[0-9]+\.[0-9]+\.[0-9]+/
+  except:
+    - branches
+  variables:
+    APT_REPO: "stable"
+
+##############
+#### Jobs ####
+##############
+
+# Test against (on every commit)
+################################
+test:focal:amd64:
+  <<: *amd64_focal_job
+  extends: .test
+
+# Deploy testing (only on master)
+#################################
+package_testing:focal:amd64:
+  <<: *amd64_focal_job
+  extends: .package_testing
+
+# Deploy stable (only for releases, version tags)
+#################################################
+package_stable:focal:amd64:
+  <<: *amd64_focal_job
+  extends: .package_stable

@@ -1,0 +1,11 @@
+build
+
+*~
+*.swp
+
+.*
+!.clang-format
+!.dockerignore
+!.gitignore
+!.gitlab-ci.yml
+!.gitmodules
