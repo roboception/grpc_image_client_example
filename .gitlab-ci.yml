@@ -1,7 +1,7 @@
 before_script:
   - export DISTRO_CODENAME=`lsb_release -cs` && echo Using distro $DISTRO_CODENAME
   - export DEBIAN_FRONTEND=noninteractive
-  - apt-get update -yq && apt-get install -y lintian git libgrpc++-dev protobuf-compiler-grpc
+  - apt-get update -yq && apt-get install -y lintian git libgrpc++-dev protobuf-compiler-grpc libpng-dev
 
 variables:
   GET_SOURCES_ATTEMPTS: "3"

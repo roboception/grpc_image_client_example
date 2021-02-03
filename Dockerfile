@@ -1,7 +1,7 @@
 FROM ubuntu:focal as builder
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y cmake dpkg-dev file git g++ libgrpc++-dev lintian protobuf-compiler-grpc pkg-config
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y cmake dpkg-dev file git g++ libgrpc++-dev libpng-dev lintian protobuf-compiler-grpc pkg-config
 
 WORKDIR /workspace
 COPY . .

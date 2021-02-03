@@ -10,6 +10,7 @@
  */
 
 #include "image_interface.grpc.pb.h"
+#include "image_utils.h"
 
 #include <grpc++/grpc++.h>
 
@@ -20,14 +21,18 @@ using grpc::ClientContext;
 using grpc::ClientReader;
 using grpc::Status;
 
-class ImageInterfaceClient {
- public:
-  ImageInterfaceClient(std::shared_ptr<Channel> channel)
-      : stub_(ImageInterface::NewStub(channel)) {}
+class ImageInterfaceClient
+{
+public:
+  ImageInterfaceClient(std::shared_ptr<Channel> channel) : stub_(ImageInterface::NewStub(channel))
+  {
+  }
 
   // Assembles the client's payload, sends it and
   // prints ImageSet timestamp
-  void StreamImageSets(bool left, bool right, bool disparity, bool confidence, bool disparity_error) {
+  void StreamImageSets(bool left, bool right, bool disparity, bool confidence, bool disparity_error,
+                       std::string store_path)
+  {
     // Data we are sending to the server.
     ImageSetRequest request;
     request.set_left_enabled(left);
@@ -50,26 +55,41 @@ class ImageInterfaceClient {
     std::unique_ptr<ClientReader<ImageSet>> reader(stub_->StreamImageSets(&context, request));
     while (reader->Read(&image_set))
     {
-      std::cout << "ImageSet timestamp " << image_set.timestamp().sec() << "." << std::setfill('0') << std::setw(9) << image_set.timestamp().nsec()
-                << " [l: " << image_set.has_left() << ", r: " << image_set.has_right() << ", d: " << image_set.has_disparity()
-                << ", c: " << image_set.has_confidence() << ", e: " << image_set.has_disparity_error() << "]" << std::endl;
+      std::cout << "ImageSet timestamp " << image_set.timestamp().sec() << "." << std::setfill('0') << std::setw(9)
+                << image_set.timestamp().nsec() << " [l: " << image_set.has_left() << ", r: " << image_set.has_right()
+                << ", d: " << image_set.has_disparity() << ", c: " << image_set.has_confidence()
+                << ", e: " << image_set.has_disparity_error() << "]" << std::endl;
       /////////////////////////////////////////////
       // here you would actually process the images
       /////////////////////////////////////////////
+      if (!store_path.empty())
+      {
+        try
+        {
+          storeImageSet(store_path, utils::ImgFmt::PNG, image_set);
+        }
+        catch (const std::exception& e)
+        {
+          std::cerr << e.what() << std::endl;
+        }
+      }
     }
     Status status = reader->Finish();
     // Act upon its status.
-    if (status.ok()) {
+    if (status.ok())
+    {
       std::cout << "StreamImageSets rpc succeded." << std::endl;
-    } else {
-      std::cerr << "StreamImageSets rpc failed with: code " << status.error_code() << ": " << status.error_message() << std::endl;
+    }
+    else
+    {
+      std::cerr << "StreamImageSets rpc failed with: code " << status.error_code() << ": " << status.error_message()
+                << std::endl;
     }
   }
 
- private:
+private:
   std::unique_ptr<ImageInterface::Stub> stub_;
 };
-
 
 void print_help(char** argv)
 {
@@ -86,8 +106,8 @@ void print_help(char** argv)
   std::cout << "-d 0|1      Enable disparity image       (default: 1)" << std::endl;
   std::cout << "-c 0|1      Enable confidence image      (default: 0)" << std::endl;
   std::cout << "-e 0|1      Enable disparity error image (default: 0)" << std::endl;
+  std::cout << "-o path     Store images in path" << std::endl;
 }
-
 
 int main(int argc, char** argv)
 {
@@ -97,10 +117,11 @@ int main(int argc, char** argv)
   bool disparity = true;
   bool confidence = false;
   bool disparity_error = false;
+  std::string output_path;
 
   if (argc > 1 && std::string(argv[1]) != "-h" && argv[1][0] != '-')
   {
-    int i=1;
+    int i = 1;
     target_str = argv[i++];
     while (i < argc)
     {
@@ -120,6 +141,8 @@ int main(int argc, char** argv)
         confidence = std::string(argv[i++]) != "0";
       else if (p == "-e")
         disparity_error = std::string(argv[i++]) != "0";
+      else if (p == "-o")
+        output_path = std::string(argv[i++]);
     }
   }
   else
@@ -133,10 +156,9 @@ int main(int argc, char** argv)
   // We indicate that the channel isn't authenticated (use of
   // InsecureChannelCredentials()).
   std::cout << "Connecting to target " << target_str << std::endl;
-  ImageInterfaceClient client(grpc::CreateChannel(
-      target_str, grpc::InsecureChannelCredentials()));
+  ImageInterfaceClient client(grpc::CreateChannel(target_str, grpc::InsecureChannelCredentials()));
   // call the StreamImageSets RPC with the desired images
-  client.StreamImageSets(left, right, disparity, confidence, disparity_error);
+  client.StreamImageSets(left, right, disparity, confidence, disparity_error, output_path);
   // streams forever until the client is stopped
 
   return 0;

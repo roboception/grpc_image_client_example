@@ -58,20 +58,29 @@ add_custom_command(
         "${ii_proto}"
       DEPENDS "${ii_proto}")
 
-
 include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+# png for saving (optional)
+find_package(PNG)
+if (PNG_FOUND)
+  include_directories(${PNG_INCLUDE_DIRS})
+  add_definitions(-DINCLUDE_PNG)
+  add_definitions(${PNG_DEFINITIONS})
+endif ()
+
 # example client
 add_executable(grpc_image_client
   src/grpc_image_client.cpp
+  src/image_utils.cpp
   ${ii_proto_srcs}
   ${ii_grpc_srcs}
 )
 target_link_libraries(grpc_image_client
     ${PROTOBUF_LIBRARIES}
     ${gRPC_LIBRARIES}
+    ${PNG_LIBRARIES}
 )
 
 install(TARGETS grpc_image_client COMPONENT bin DESTINATION bin)
