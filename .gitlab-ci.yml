@@ -7,6 +7,11 @@ variables:
   GET_SOURCES_ATTEMPTS: "3"
   GIT_DEPTH: "0"
 
+stages:
+  - test
+  - deploy
+  - image
+
 #########################
 # Templates using anchors
 #########################
@@ -57,6 +62,26 @@ variables:
   variables:
     APT_REPO: "stable"
 
+.docker_build:
+  image: docker:latest
+  stage: image
+  before_script:
+    - docker info
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
+    - if [ -z "$IMAGE" ]; then export IMAGE=$CI_REGISTRY_IMAGE ; fi
+    - if [ -n "$CI_COMMIT_TAG" ]; then export IMAGE_TAG=$CI_COMMIT_TAG ; else export IMAGE_TAG=$CI_COMMIT_REF_SLUG ; fi
+    - if [ "$CI_COMMIT_REF_NAME" = "master" ]; then export IMAGE_TAG=testing ; fi
+    - if [ -z "$DOCKER_BUILD_FLAGS" ]; then export DOCKER_BUILD_FLAGS="--pull --no-cache --build-arg RC_REPO=$RC_REPO"; fi
+    - if [ -z "$DOCKERFILE_DIR" ]; then export DOCKERFILE_DIR=.; fi
+  script:
+    - echo "building docker image $IMAGE:$IMAGE_TAG with flags $DOCKER_BUILD_FLAGS"
+    - docker build $DOCKER_BUILD_FLAGS -t $IMAGE:$IMAGE_TAG $DOCKERFILE_DIR
+    - docker push $IMAGE:$IMAGE_TAG
+    - if [ -n "$CI_COMMIT_TAG" ]; then docker tag $IMAGE:$IMAGE_TAG $IMAGE:latest; docker push $IMAGE:latest; docker rmi $IMAGE:latest; fi
+    - docker rmi $IMAGE:$IMAGE_TAG || true
+  tags:
+    - docker-build
+
 ##############
 #### Jobs ####
 ##############
@@ -78,3 +103,8 @@ package_testing:focal:amd64:
 package_stable:focal:amd64:
   <<: *amd64_focal_job
   extends: .package_stable
+
+# Build and push as docker image
+################################
+docker_image:
+  extends: .docker_build
