@@ -186,11 +186,60 @@ std::string storeImagePNG(const std::string& name, const Image& image)
 
 #endif
 
+std::string getGpioSuffix(const Image& image)
+{
+  // suffix as _<gpio_out>_<gpio_in>
+  std::string out;
+  std::string in;
+
+  for (int i=31; i >= 0; i--)
+  {
+    if ((image.gpios().outputs() >> i) & 0x1)
+    {
+      out += std::to_string((image.gpios().values() >> i) & 0x1);
+    }
+    if ((image.gpios().inputs() >> i) & 0x1)
+    {
+      in += std::to_string((image.gpios().values() >> i) & 0x1);
+    }
+  }
+  return "_" + out + "_" + in;
+}
+
+void storeParamTxt(const std::string& prefix, const DisparityImage& disp)
+{
+  const float f = disp.image().focal_length();
+  const float t = disp.baseline();
+  const float u = disp.image().principal_point_u();
+  const float v = disp.image().principal_point_v();
+
+  // add GPIO flags to prefix
+  std::string name = prefix + getGpioSuffix(disp.image()) + "_param.txt";
+  std::ofstream out(ensureNewFileName(name));
+
+  out << "# Created by grpc_image_client" << std::endl;
+  out << std::fixed << std::setprecision(5);
+  out << "camera.A=[" << f << " 0 " << u << "; 0 " << f << " " << v << "; 0 0 1]" << std::endl;
+  out << "camera.height=" << disp.image().height() << std::endl;
+  out << "camera.width=" << disp.image().width() << std::endl;
+  out << "rho=" << f*t << std::endl;
+  out << "t=" << t << std::endl;
+  out << "camera.exposure_time=" << disp.image().exposure_time() << std::endl;
+  out << "camera.gain=" << disp.image().gain() << std::endl;
+  out << "camera.noise=" << disp.image().noise() << std::endl;
+  out << "camera.out1_reduction=" << disp.image().out1_reduction() << std::endl;
+  out << "camera.brightness=" << disp.image().brightness() << std::endl;
+  out.close();
+}
+
 }  // namespace
 
-std::string storeImage(const std::string& name, ImgFmt fmt, const Image& image)
+std::string storeImage(const std::string& prefix, ImgFmt fmt, const Image& image)
 {
   std::string ret;
+
+  // add GPIO flags to prefix
+  std::string name = prefix + getGpioSuffix(image);
 
   switch (fmt)
   {
@@ -215,6 +264,7 @@ void storeImageSet(const std::string& path, ImgFmt fmt, const ImageSet& image_se
   std::ostringstream ts_str;
   ts_str << image_set.timestamp().sec() << "." << std::setfill('0') << std::setw(9) << image_set.timestamp().nsec();
   std::string prefix = path + "image_" + ts_str.str() + "_";
+
   if (image_set.has_left())
   {
     storeImage(prefix + "left", PNG, image_set.left());
@@ -223,10 +273,10 @@ void storeImageSet(const std::string& path, ImgFmt fmt, const ImageSet& image_se
   {
     storeImage(prefix + "right", PNG, image_set.right());
   }
-  // TODO: store metadata
   if (image_set.has_disparity())
   {
-    storeImage("disparity", PNG, image_set.disparity().image());
+    storeImage(prefix + "disparity", PNG, image_set.disparity().image());
+    storeParamTxt(prefix + "disparity", image_set.disparity());
   }
   if (image_set.has_confidence())
   {

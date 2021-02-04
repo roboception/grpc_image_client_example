@@ -36,11 +36,11 @@ Stores the given image.
 NOTE: An exception that is based on std::exception is thrown in case of an
 error, e.g. if input or output format is not supported.
 
-@param name    Name of output file without suffix.
+@param prefix  Name of output file without suffix.
 @param fmt     Image file format.
 @param image   Image to be stored.
 */
-std::string storeImage(const std::string& name, ImgFmt fmt, const Image& image);
+std::string storeImage(const std::string& prefix, ImgFmt fmt, const Image& image);
 
 void storeImageSet(const std::string& path, ImgFmt fmt, const ImageSet& image_set);
 
