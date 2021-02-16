@@ -3,7 +3,7 @@ Example client for gRPC image server
 
 The rc_cube provides synchronized image sets via [gRPC](https://grpc.io/) server side streams on port 5001.
 
-This example client just prints the timestamps and type of received images.
+This example client prints the timestamps and type of received images and optionally saves them as png.
 
 The left, right, disparity, confidence and disparity_error images can be enabled separately.
 
