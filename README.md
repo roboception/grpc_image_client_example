@@ -12,7 +12,7 @@ Building
 
 This example uses the grpc++ library and grpc_cpp_plugin. pkg-config is used to find those.
 
-On Debian/Ubuntuy systems this can be installed with
+On Debian/Ubuntu systems this can be installed with
 
     sudo apt-get install libgrpc++-dev protobuf-compiler-grpc pgk-config
 
@@ -23,6 +23,12 @@ To build the example with cmake
     make
 
 A debian package can be built with `make package`.
+
+> **Note for Ubuntu 18.04 and lower**
+>
+> The gRPC packages in Ubuntu 18.04 and lower are not packaged correctly resulting in a segmentation fault.
+> See https://bugs.launchpad.net/ubuntu/+source/grpc/+bug/1727528
+> Either build those from source, use a more recent Ubuntu version or the packages from Debian.
 
 Running
 -------
