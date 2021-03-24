@@ -27,7 +27,7 @@ A debian package can be built with `make package`.
 > **Note for Ubuntu 18.04 and lower**
 >
 > The gRPC packages in Ubuntu 18.04 and lower are not packaged correctly resulting in a segmentation fault.
-> See https://bugs.launchpad.net/ubuntu/+source/grpc/+bug/1727528
+> See https://bugs.launchpad.net/ubuntu/+source/grpc/+bug/1727528 and https://bugs.launchpad.net/ubuntu/+source/grpc/+bug/1797000
 > Either build those from source, use a more recent Ubuntu version or the packages from Debian.
 
 Running
