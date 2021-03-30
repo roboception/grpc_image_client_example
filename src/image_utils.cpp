@@ -229,6 +229,9 @@ void storeParamTxt(const std::string& prefix, const DisparityImage& disp)
   out << "camera.noise=" << disp.image().noise() << std::endl;
   out << "camera.out1_reduction=" << disp.image().out1_reduction() << std::endl;
   out << "camera.brightness=" << disp.image().brightness() << std::endl;
+  out << "disp.scale=" << disp.scale() << std::endl;
+  out << "disp.offset=" << disp.offset() << std::endl;
+  out << "disp.inv=" << disp.invalid_data_value() << std::endl;
   out.close();
 }
 
