@@ -155,8 +155,14 @@ int main(int argc, char** argv)
   // are created. This channel models a connection to an endpoint IP:port.
   // We indicate that the channel isn't authenticated (use of
   // InsecureChannelCredentials()).
+  // We also set max message size to 125MB to receive up to 12MP images
   std::cout << "Connecting to target " << target_str << std::endl;
-  ImageInterfaceClient client(grpc::CreateChannel(target_str, grpc::InsecureChannelCredentials()));
+  grpc::ChannelArguments ch_args;
+  ch_args.SetMaxReceiveMessageSize(125 * 1024 * 1024);
+  std::shared_ptr<Channel> channel = grpc::CreateCustomChannel(target_str,
+                                                               grpc::InsecureChannelCredentials(),
+                                                               ch_args);
+  ImageInterfaceClient client(channel);
   // call the StreamImageSets RPC with the desired images
   client.StreamImageSets(left, right, disparity, confidence, disparity_error, output_path);
   // streams forever until the client is stopped
