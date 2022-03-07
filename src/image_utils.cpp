@@ -235,6 +235,13 @@ void storeParamTxt(const std::string& prefix, const DisparityImage& disp)
   out.close();
 }
 
+void storeBuffer(const std::string& filename, const std::string& buffer)
+{
+  std::ofstream out(ensureNewFileName(filename), std::ios::out | std::ios::binary);
+  out.write(buffer.data(), buffer.size());
+  out.close();
+}
+
 }  // namespace
 
 std::string storeImage(const std::string& prefix, ImgFmt fmt, const Image& image)
@@ -288,6 +295,10 @@ void storeImageSet(const std::string& path, ImgFmt fmt, const ImageSet& image_se
   if (image_set.has_disparity_error())
   {
     storeImage(prefix + "error", PNG, image_set.disparity_error());
+  }
+  if (image_set.has_mesh())
+  {
+    storeBuffer(prefix + "mesh.ply", image_set.mesh().data());
   }
 }
 
