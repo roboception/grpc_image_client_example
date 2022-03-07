@@ -44,6 +44,13 @@ message DisparityImage
   Image image              = 7; ///< disparity image
 }
 
+message Mesh
+{
+  Time timestamp           = 1; ///< Acquisition timestamp of disparity image from which the mesh is computed
+  string format            = 2; ///< currently only "ply" is supported
+  bytes data               = 3; ///< actual mesh data
+}
+
 message ImageSet
 {
   Time timestamp             = 1;
@@ -52,6 +59,18 @@ message ImageSet
   DisparityImage disparity   = 4;
   Image disparity_error      = 5;
   Image confidence           = 6;
+  Mesh mesh                  = 7;
+}
+
+message MeshOptions
+{
+  uint32 max_points            = 1; ///< limit maximum number of points, zero means default (up to 3MP)
+  enum BinningMethod {
+    AVERAGE = 0;                    ///< average over all points in bin
+    MIN_DEPTH = 1;                  ///< use point with minimum depth (i.e. closest to camera) in bin
+  }
+  BinningMethod binning_method = 2; ///< method used for binning if limited by max_points
+  bool watertight              = 3; ///< connect all edges and fill all holes, e.g. for collision checking
 }
 
 message ImageSetRequest
@@ -61,6 +80,8 @@ message ImageSetRequest
   bool disparity_enabled       = 3;
   bool disparity_error_enabled = 4;
   bool confidence_enabled      = 5;
+  bool mesh_enabled            = 6;
+  MeshOptions mesh_options     = 7;
 }
 
 service ImageInterface

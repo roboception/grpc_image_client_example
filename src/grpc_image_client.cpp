@@ -30,8 +30,8 @@ public:
 
   // Assembles the client's payload, sends it and
   // prints ImageSet timestamp
-  void StreamImageSets(bool left, bool right, bool disparity, bool confidence, bool disparity_error,
-                       std::string store_path)
+  void StreamImageSets(bool left, bool right, bool disparity, bool confidence, bool disparity_error, bool mesh,
+                       std::string store_path, size_t mesh_max_points, int mesh_binning_method, bool mesh_watertight)
   {
     // Data we are sending to the server.
     ImageSetRequest request;
@@ -40,9 +40,22 @@ public:
     request.set_disparity_enabled(disparity);
     request.set_confidence_enabled(confidence);
     request.set_disparity_error_enabled(disparity_error);
+    request.set_mesh_enabled(mesh);
+
+    MeshOptions *mesh_options=new MeshOptions();
+    mesh_options->set_max_points(mesh_max_points);
+
+    if (mesh_binning_method == 0)
+      mesh_options->set_binning_method(MeshOptions_BinningMethod_AVERAGE);
+    else
+      mesh_options->set_binning_method(MeshOptions_BinningMethod_MIN_DEPTH);
+
+    mesh_options->set_watertight(mesh_watertight);
+
+    request.set_allocated_mesh_options(mesh_options);
 
     std::cout << "Requesting images sets: [l: " << left << ", r: " << right << ", d: " << disparity
-              << ", c: " << confidence << ", e: " << disparity_error << "]" << std::endl;
+              << ", c: " << confidence << ", e: " << disparity_error << ", m: " << mesh << "]" << std::endl;
 
     // Container for the data we expect from the server.
     ImageSet image_set;
@@ -58,7 +71,7 @@ public:
       std::cout << "ImageSet timestamp " << image_set.timestamp().sec() << "." << std::setfill('0') << std::setw(9)
                 << image_set.timestamp().nsec() << " [l: " << image_set.has_left() << ", r: " << image_set.has_right()
                 << ", d: " << image_set.has_disparity() << ", c: " << image_set.has_confidence()
-                << ", e: " << image_set.has_disparity_error() << "]" << std::endl;
+                << ", e: " << image_set.has_disparity_error() << ", m: " << image_set.has_mesh() << "]" << std::endl;
       /////////////////////////////////////////////
       // here you would actually process the images
       /////////////////////////////////////////////
@@ -100,13 +113,19 @@ void print_help(char** argv)
   std::cout << "-h          Prints help information and exits" << std::endl;
   std::cout << "IP:port     Target IP:port to connect to (e.g: 172.17.0.1:50051)" << std::endl;
   std::cout << std::endl;
-  std::cout << "Options:" << std::endl;
+  std::cout << "Short options:" << std::endl;
   std::cout << "-l 0|1      Enable left image            (default: 1)" << std::endl;
   std::cout << "-r 0|1      Enable right image           (default: 0)" << std::endl;
   std::cout << "-d 0|1      Enable disparity image       (default: 1)" << std::endl;
   std::cout << "-c 0|1      Enable confidence image      (default: 0)" << std::endl;
   std::cout << "-e 0|1      Enable disparity error image (default: 0)" << std::endl;
+  std::cout << "-m 0|1      Enable mesh                  (default: 0)" << std::endl;
   std::cout << "-o path     Store images in path" << std::endl;
+  std::cout << std::endl;
+  std::cout << "Long options:" << std::endl;
+  std::cout << "--mesh_max_points     <n>  Maximum number of mesh points (default: 0)" << std::endl;
+  std::cout << "--mesh_binning_method 0|1  0 == Average, 1 == min depth  (default: 0)" << std::endl;
+  std::cout << "--mesh_watertight     0|1  Enable watertight mesh        (default: 0)" << std::endl;
 }
 
 int main(int argc, char** argv)
@@ -117,7 +136,11 @@ int main(int argc, char** argv)
   bool disparity = true;
   bool confidence = false;
   bool disparity_error = false;
+  bool mesh = false;
   std::string output_path;
+  size_t mesh_max_points = 0;
+  int mesh_binning_method = 0;
+  bool mesh_watertight = false;
 
   if (argc > 1 && std::string(argv[1]) != "-h" && argv[1][0] != '-')
   {
@@ -141,6 +164,14 @@ int main(int argc, char** argv)
         confidence = std::string(argv[i++]) != "0";
       else if (p == "-e")
         disparity_error = std::string(argv[i++]) != "0";
+      else if (p == "-m")
+        mesh = std::string(argv[i++]) != "0";
+      else if (p == "--mesh_max_points")
+        mesh_max_points = std::stoi(argv[i++]);
+      else if (p == "--mesh_binning_method")
+        mesh_binning_method = std::stoi(argv[i++]);
+      else if (p == "--mesh_watertight")
+        mesh_watertight = std::string(argv[i++]) != "0";
       else if (p == "-o")
         output_path = std::string(argv[i++]);
     }
@@ -155,16 +186,18 @@ int main(int argc, char** argv)
   // are created. This channel models a connection to an endpoint IP:port.
   // We indicate that the channel isn't authenticated (use of
   // InsecureChannelCredentials()).
-  // We also set max message size to 125MB to receive up to 12MP images
+  // We also set max message size to 250M to receive up to 12MP images including mesh
+  // However we do not recommend to request all images including mesh at the same time
   std::cout << "Connecting to target " << target_str << std::endl;
   grpc::ChannelArguments ch_args;
-  ch_args.SetMaxReceiveMessageSize(125 * 1024 * 1024);
+  ch_args.SetMaxReceiveMessageSize(250 * 1024 * 1024);
   std::shared_ptr<Channel> channel = grpc::CreateCustomChannel(target_str,
                                                                grpc::InsecureChannelCredentials(),
                                                                ch_args);
   ImageInterfaceClient client(channel);
   // call the StreamImageSets RPC with the desired images
-  client.StreamImageSets(left, right, disparity, confidence, disparity_error, output_path);
+  client.StreamImageSets(left, right, disparity, confidence, disparity_error, mesh, output_path,
+    mesh_max_points, mesh_binning_method, mesh_watertight);
   // streams forever until the client is stopped
 
   return 0;
