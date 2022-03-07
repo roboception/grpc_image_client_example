@@ -100,7 +100,7 @@ std::string storeImagePNG(const std::string& name, const Image& image)
 
   std::string full_name;
 
-  if (image.encoding() == "mono8")
+  if (image.encoding() == "mono8" || image.encoding() == "rgb8" || image.encoding() == "mono16")
   {
     // open file and init
 
@@ -119,8 +119,21 @@ std::string storeImagePNG(const std::string& name, const Image& image)
     // write header
 
     png_init_io(png, out);
-    png_set_IHDR(png, info, width, height, 8, PNG_COLOR_TYPE_GRAY, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
+    if (image.encoding() == "mono8")
+    {
+      png_set_IHDR(png, info, width, height, 8, PNG_COLOR_TYPE_GRAY, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
                  PNG_FILTER_TYPE_DEFAULT);
+    }
+    else if (image.encoding() == "rgb8")
+    {
+      png_set_IHDR(png, info, width, height, 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
+                 PNG_FILTER_TYPE_DEFAULT);
+    }
+    else if (image.encoding() == "mono16")
+    {
+      png_set_IHDR(png, info, width, height, 16, PNG_COLOR_TYPE_GRAY, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
+                 PNG_FILTER_TYPE_DEFAULT);
+    }
     png_write_info(png, info);
 
     // write image body
@@ -137,48 +150,9 @@ std::string storeImagePNG(const std::string& name, const Image& image)
     fclose(out);
     png_destroy_write_struct(&png, &info);
   }
-  else if (image.encoding() == "mono16")
+  else
   {
-    // store 16 bit monochrome image
-    // open file and init
-
-    full_name = ensureNewFileName(name + ".png");
-    FILE* out = fopen(full_name.c_str(), "wb");
-
-    if (!out)
-    {
-      throw new IOException("Cannot store file: " + full_name);
-    }
-
-    png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0);
-    png_infop info = png_create_info_struct(png);
-    setjmp(png_jmpbuf(png));
-
-    // write header
-
-    png_init_io(png, out);
-    png_set_IHDR(png, info, width, height, 16, PNG_COLOR_TYPE_GRAY, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
-                 PNG_FILTER_TYPE_DEFAULT);
-    png_write_info(png, info);
-
-    // write image body
-
-    if (!image.is_bigendian())
-    {
-      png_set_swap(png);
-    }
-
-    for (size_t k = 0; k < height; k++)
-    {
-      png_write_row(png, const_cast<png_bytep>(p));
-      p += image.step();
-    }
-
-    // close file
-
-    png_write_end(png, info);
-    fclose(out);
-    png_destroy_write_struct(&png, &info);
+    throw IOException("storeImage(): Uupported image format!");
   }
 
   return full_name;

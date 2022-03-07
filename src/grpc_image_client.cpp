@@ -30,8 +30,8 @@ public:
 
   // Assembles the client's payload, sends it and
   // prints ImageSet timestamp
-  void StreamImageSets(bool left, bool right, bool disparity, bool confidence, bool disparity_error, bool mesh,
-                       std::string store_path, size_t mesh_max_points, int mesh_binning_method, bool mesh_watertight)
+  void StreamImageSets(bool left, bool right, bool disparity, bool confidence, bool disparity_error, bool mesh, bool color,
+                       std::string store_path, size_t mesh_max_points, int mesh_binning_method, bool mesh_watertight, bool mesh_textured)
   {
     // Data we are sending to the server.
     ImageSetRequest request;
@@ -41,9 +41,11 @@ public:
     request.set_confidence_enabled(confidence);
     request.set_disparity_error_enabled(disparity_error);
     request.set_mesh_enabled(mesh);
+    request.set_color(color);
 
     MeshOptions *mesh_options=new MeshOptions();
     mesh_options->set_max_points(mesh_max_points);
+    mesh_options->set_textured(mesh_textured);
 
     if (mesh_binning_method == 0)
       mesh_options->set_binning_method(MeshOptions_BinningMethod_AVERAGE);
@@ -123,9 +125,11 @@ void print_help(char** argv)
   std::cout << "-o path     Store images in path" << std::endl;
   std::cout << std::endl;
   std::cout << "Long options:" << std::endl;
+  std::cout << "--color               0|1  left/right image as RGB8      (default: 0)" << std::endl;
   std::cout << "--mesh_max_points     <n>  Maximum number of mesh points (default: 0)" << std::endl;
   std::cout << "--mesh_binning_method 0|1  0 == Average, 1 == min depth  (default: 0)" << std::endl;
   std::cout << "--mesh_watertight     0|1  Enable watertight mesh        (default: 0)" << std::endl;
+  std::cout << "--mesh_textured       0|1  Enable textured mesh          (default: 0)" << std::endl;
 }
 
 int main(int argc, char** argv)
@@ -137,10 +141,12 @@ int main(int argc, char** argv)
   bool confidence = false;
   bool disparity_error = false;
   bool mesh = false;
+  bool color = false;
   std::string output_path;
   size_t mesh_max_points = 0;
   int mesh_binning_method = 0;
   bool mesh_watertight = false;
+  bool mesh_textured = false;
 
   if (argc > 1 && std::string(argv[1]) != "-h" && argv[1][0] != '-')
   {
@@ -166,12 +172,16 @@ int main(int argc, char** argv)
         disparity_error = std::string(argv[i++]) != "0";
       else if (p == "-m")
         mesh = std::string(argv[i++]) != "0";
+      else if (p == "--color")
+        color = std::string(argv[i++]) != "0";
       else if (p == "--mesh_max_points")
         mesh_max_points = std::stoi(argv[i++]);
       else if (p == "--mesh_binning_method")
         mesh_binning_method = std::stoi(argv[i++]);
       else if (p == "--mesh_watertight")
         mesh_watertight = std::string(argv[i++]) != "0";
+      else if (p == "--mesh_textured")
+        mesh_textured = std::string(argv[i++]) != "0";
       else if (p == "-o")
         output_path = std::string(argv[i++]);
     }
@@ -186,18 +196,18 @@ int main(int argc, char** argv)
   // are created. This channel models a connection to an endpoint IP:port.
   // We indicate that the channel isn't authenticated (use of
   // InsecureChannelCredentials()).
-  // We also set max message size to 250M to receive up to 12MP images including mesh
+  // We also set max message size to 300M to receive up to 12MP images including mesh
   // However we do not recommend to request all images including mesh at the same time
   std::cout << "Connecting to target " << target_str << std::endl;
   grpc::ChannelArguments ch_args;
-  ch_args.SetMaxReceiveMessageSize(250 * 1024 * 1024);
+  ch_args.SetMaxReceiveMessageSize(300 * 1024 * 1024);
   std::shared_ptr<Channel> channel = grpc::CreateCustomChannel(target_str,
                                                                grpc::InsecureChannelCredentials(),
                                                                ch_args);
   ImageInterfaceClient client(channel);
   // call the StreamImageSets RPC with the desired images
-  client.StreamImageSets(left, right, disparity, confidence, disparity_error, mesh, output_path,
-    mesh_max_points, mesh_binning_method, mesh_watertight);
+  client.StreamImageSets(left, right, disparity, confidence, disparity_error, mesh, color, output_path,
+    mesh_max_points, mesh_binning_method, mesh_watertight, mesh_textured);
   // streams forever until the client is stopped
 
   return 0;

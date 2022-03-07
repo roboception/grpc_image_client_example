@@ -64,13 +64,14 @@ message ImageSet
 
 message MeshOptions
 {
-  uint32 max_points            = 1; ///< limit maximum number of points, zero means default (up to 3MP)
+  uint32 max_points            = 1; ///< limit maximum number of points, zero means default (up to 3.1MP), minimum is 1000
   enum BinningMethod {
     AVERAGE = 0;                    ///< average over all points in bin
     MIN_DEPTH = 1;                  ///< use point with minimum depth (i.e. closest to camera) in bin
   }
   BinningMethod binning_method = 2; ///< method used for binning if limited by max_points
   bool watertight              = 3; ///< connect all edges and fill all holes, e.g. for collision checking
+  bool textured                = 4; ///< add texture information to mesh
 }
 
 message ImageSetRequest
@@ -82,6 +83,7 @@ message ImageSetRequest
   bool confidence_enabled      = 5;
   bool mesh_enabled            = 6;
   MeshOptions mesh_options     = 7;
+  bool color                   = 8; ///< send left/right image as color (rgb8) images
 }
 
 service ImageInterface
@@ -89,4 +91,3 @@ service ImageInterface
   // A server-to-client streaming RPC.
   rpc StreamImageSets(ImageSetRequest) returns (stream ImageSet) {}
 }
-
