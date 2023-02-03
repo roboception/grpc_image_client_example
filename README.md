@@ -39,4 +39,4 @@ Required argument is the target (IP:port):
 
 For all options see
 
-    grcp_image_client -h
+    grpc_image_client -h
